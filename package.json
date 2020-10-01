@@ -4,7 +4,7 @@
   "description": "",
   "main": "foundry.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "generate": "tsc -p declaration.tsconfig.json"
   },
   "author": "",
   "license": "ISC",
