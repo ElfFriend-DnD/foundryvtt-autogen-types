@@ -4,9 +4,8 @@
     "noEmit": false,
     "emitDeclarationOnly": true,
     "allowJs": true,
-    "target": "ES2017",
-    "lib": ["DOM", "ES6", "ES2017"]
+    "target": "ESNEXT"
   },
-  "include": ["src/foundry.js"],
+  "include": ["src/foundry_073/foundry.js"],
   "exclude": ["node_modules"]
 }

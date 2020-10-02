@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "allowJs": true,
+    "target": "ESNEXT"
+  },
+  "include": ["src/foundry_066/foundry.js"],
+  "exclude": ["node_modules"]
+}

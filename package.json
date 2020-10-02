@@ -4,7 +4,8 @@
   "description": "",
   "main": "foundry.d.ts",
   "scripts": {
-    "generate": "tsc -p declaration.tsconfig.json"
+    "generate:066": "tsc -p 066_declaration.tsconfig.json",
+    "generate:073": "tsc -p 073_declaration.tsconfig.json"
   },
   "author": "",
   "license": "ISC",
