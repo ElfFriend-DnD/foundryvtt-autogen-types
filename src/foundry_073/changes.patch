@@ -1,0 +1,1968 @@
+From fb6b0e16b7b19c4d383eea0a10c3b20fe2a9a7b6 Mon Sep 17 00:00:00 2001
+From: David Archibald <david@robarchibald.com>
+Date: Fri, 2 Oct 2020 02:35:24 -0700
+Subject: [PATCH] Typing experiments
+
+---
+ src/foundry_073/foundry.js | 984 ++++++++++++++++++++------------------
+ 1 file changed, 526 insertions(+), 458 deletions(-)
+
+diff --git a/src/foundry_073/foundry.js b/src/foundry_073/foundry.js
+index 4093cc2..35be87e 100755
+--- a/src/foundry_073/foundry.js
++++ b/src/foundry_073/foundry.js
+@@ -11,11 +11,13 @@
+ /**
+  * A single point, expressed as an array [x,y]
+  * @typedef {number[]} PointArray
++ * @property {number} 0
++ * @property {number} 1
+  */
+ 
+ /**
+  * A Ray intersection point
+- * @typedef {{x: number, y: number, t0: number, t1: number}|null} RayIntersection
++ * @typedef {{x: number, y: number, t0: number, t1: number}} RayIntersection
+  * @property [wall] Wall
+  */
+ 
+@@ -31,13 +33,13 @@
+ 
+ /**
+  * The expected structure for a Data record
+- * @typedef {{string, any}} Data
+- * @property [_id] string
++ * @typedef {Object.<string, *>} Data
++ * @property [Data._id] string
+  */
+ 
+ /**
+  * An object of optional keys and values which configure the behavior of a function
+- * @typedef {{string, any}} Options
++ * @typedef {Object.<string, *>} Options
+  */
+ 
+ 
+@@ -50,7 +52,7 @@ const WEBSITE_URL = "https://foundryvtt.com";
+ 
+ /**
+  * Define the allowed ActiveEffect application modes
+- * @type {{string, number}}
++ * @type {Object.<string, number>}
+  */
+ const ACTIVE_EFFECT_MODES = {
+   CUSTOM: 0,
+@@ -73,7 +75,7 @@ const BASE_ENTITY_TYPE = "base";
+ 
+ /**
+  * Valid Chat Message types
+- * @type {Object}
++ * @type {Object.<string, number>}
+  */
+ const CHAT_MESSAGE_TYPES = {
+   OTHER: 0,
+@@ -87,7 +89,7 @@ const CHAT_MESSAGE_TYPES = {
+ /**
+  * The allowed Entity types which may exist within a Compendium pack
+  * This is a subset of ENTITY_TYPES
+- * @type {Array}
++ * @type {string[]}
+  */
+ const COMPENDIUM_ENTITY_TYPES = ["Actor", "Item", "Scene", "JournalEntry", "Macro", "RollTable", "Playlist"];
+ 
+@@ -99,13 +101,13 @@ const CORE_SUPPORTED_LANGUAGES = ["en"];
+ 
+ /**
+  * The default artwork used for Token images if none is provided
+- * @type {String}
++ * @type {string}
+  */
+ const DEFAULT_TOKEN = 'icons/svg/mystery-man.svg';
+ 
+ /**
+  * The default artwork used for Note placeables if none is provided
+- * @type {String}
++ * @type {string}
+  */
+ const DEFAULT_NOTE_ICON = 'icons/svg/book.svg';
+ 
+@@ -141,7 +143,7 @@ const DRAWING_TYPES = {
+  * NONE: The drawing is not filled
+  * SOLID: The drawing is filled with a solid color
+  * PATTERN: The drawing is filled with a tiled image pattern
+- * @type {Object}
++ * @type {Object.<string, number>}
+  */
+ const DRAWING_FILL_TYPES = {
+   NONE: 0,
+@@ -211,7 +213,7 @@ const ENTITY_PERMISSIONS = {
+ 
+ /**
+  * EULA version number
+- * @type {String}
++ * @type {string}
+  */
+ const EULA_VERSION = "0.6.1";
+ 
+@@ -223,13 +225,13 @@ const FOLDER_ENTITY_TYPES = ["Actor", "Item", "Scene", "JournalEntry", "RollTabl
+ 
+ /**
+  * The maximum allowed level of depth for Folder nesting
+- * @type {Number}
++ * @type {number}
+  */
+ const FOLDER_MAX_DEPTH = 3;
+ 
+ /**
+  * The minimum allowed grid size which is supported by the software
+- * @type {Number}
++ * @type {number}
+  */
+ const GRID_MIN_SIZE = 50;
+ 
+@@ -249,7 +251,7 @@ const GRID_TYPES = {
+ 
+ /**
+  * Enumerate the source types which can be used for an AmbientLight placeable object
+- * @type {{UNIVERSAL: string, LOCAL: string, GLOBAL: string}}
++ * @type {{LOCAL: string, GLOBAL: string, UNIVERSAL: string}}
+  */
+ const SOURCE_TYPES = {
+   LOCAL: "l",
+@@ -260,7 +262,7 @@ const SOURCE_TYPES = {
+ 
+ /**
+  * An Array of valid MacroAction scope values
+- * @type {Array.<string>}
++ * @type {string[]}
+  */
+ const MACRO_SCOPES = ["global", "actors", "actor"];
+ 
+@@ -271,7 +273,7 @@ const MACRO_SCOPES = ["global", "actors", "actor"];
+  * SEQUENTIAL: The playlist plays sounds one at a time in sequence
+  * SHUFFLE: The playlist plays sounds one at a time in randomized order
+  * SIMULTANEOUS: The playlist plays all contained sounds at the same time
+- * @type {Object}
++ * @type {Object.<string, number>}
+  */
+ const PLAYLIST_MODES = {
+   "DISABLED": -1,
+@@ -283,7 +285,7 @@ const PLAYLIST_MODES = {
+ 
+ /**
+  * Encode the reasons why a package may be available or unavailable for use
+- * @type {Object}
++ * @type {Object.<string, number>}
+  */
+ const PACKAGE_AVAILABILITY_CODES = {
+   "UNKNOWN": -1,
+@@ -302,7 +304,7 @@ const PASSWORD_SAFE_STRING = "•".repeat(16);
+ 
+ /**
+  * The allowed software update channels
+- * @type {Object}
++ * @type {Object.<string, string>}
+  */
+ const SOFTWARE_UPDATE_CHANNELS = {
+   "alpha": "SETUP.UpdateAlpha",
+@@ -313,7 +315,7 @@ const SOFTWARE_UPDATE_CHANNELS = {
+ 
+ /**
+  * The default sorting density for manually ordering child objects within a parent
+- * @type {Number}
++ * @type {number}
+  */
+ const SORT_INTEGER_DENSITY = 100000;
+ 
+@@ -723,7 +725,7 @@ String.prototype.titleCase = function() {
+ 
+ /**
+  * Strip any <script> tags which were included within a provided string
+- * @return {String|*}
++ * @return {string|*}
+  */
+ String.prototype.stripScripts = function() {
+   let el = document.createElement("div");
+@@ -814,7 +816,7 @@ Number.between = function(num, a, b, inclusive=true) {
+  * This is the highest performing algorithm currently available
+  * https://jsperf.com/isnan-vs-typeof/5
+  * @param {*} n       A value to test
+- * @return {Boolean}  Is it a number?
++ * @return {boolean}  Is it a number?
+  */
+ Number.isNumeric = function(n) {
+   if ( n instanceof Array ) return false;
+@@ -1022,7 +1024,7 @@ function filterObject(source, template, {keepSpecial=false, templateValues=false
+ /**
+  * Flatten a possibly multi-dimensional object to a one-dimensional one by converting all nested keys to dot notation
+  * @param {Object} obj  The object to flatten
+- * @param {Number} _d   Recursion depth, to prevent overflow
++ * @param {number} _d   Recursion depth, to prevent overflow
+  * @return {Object}     A flattened object
+  */
+ function flattenObject(obj, _d=0) {
+@@ -1055,7 +1057,7 @@ function flattenObject(obj, _d=0) {
+  * inner objects.
+  *
+  * @param {Object} obj  The object to expand
+- * @param {Number} _d   Recursion depth, to prevent overflow
++ * @param {number} _d   Recursion depth, to prevent overflow
+  * @return {Object}     An expanded object
+  */
+ function expandObject(obj, _d=0) {
+@@ -1074,7 +1076,7 @@ function expandObject(obj, _d=0) {
+ /**
+  * A simple function to test whether or not an Object is empty
+  * @param {Object} obj    The object to test
+- * @return {Boolean}      Is the object empty?
++ * @return {boolean}      Is the object empty?
+  */
+ function isObjectEmpty(obj) {
+   if ( getType(obj) !== "Object" ) throw new Error("The provided data is not an object!");
+@@ -1217,10 +1219,11 @@ function mergeObject(original, other={}, {
+ 
+ /**
+  * Deeply difference an object against some other, returning the update keys and values
+- * @param {object} original     An object comparing data against which to compare.
+- * @param {object} other        An object containing potentially different data.
++ * @param {Object} original     An object comparing data against which to compare.
++ * @param {Object} other        An object containing potentially different data.
++ * @param {Object} [options]    Options for object difference.
+  * @param {boolean} [inner]     Only recognize differences in other for keys which also exist in original.
+- * @return {object}             An object of the data in other which differs from that in original.
++ * @return {Object}             An object of the data in other which differs from that in original.
+  */
+ function diffObject(original, other, {inner=false}={}) {
+   function _difference(v0, v1) {
+@@ -1253,9 +1256,9 @@ function diffObject(original, other, {inner=false}={}) {
+  * A helper function which tests whether an object has a property or nested property given a string key.
+  * The string key supports the notation a.b.c which would return true if object[a][b][c] exists
+  * @param object {Object}   The object to traverse
+- * @param key {String}      An object property with notation a.b.c
++ * @param key {string}      An object property with notation a.b.c
+  *
+- * @return {Boolean}        An indicator for whether the property exists
++ * @return {boolean}        An indicator for whether the property exists
+  */
+ function hasProperty(object, key) {
+   if ( !key ) return false;
+@@ -1275,10 +1278,14 @@ function hasProperty(object, key) {
+ /**
+  * A helper function which searches through an object to retrieve a value by a string key.
+  * The string key supports the notation a.b.c which would return object[a][b][c]
+- * @param object {Object}   The object to traverse
+- * @param key {String}      An object property with notation a.b.c
+  *
+- * @return {*}              The value of the found property
++ * @typedef {string} getProperty~K                          An object key
++ * @typedef {*} getProperty~V                               The corresponding object value
++ *
++ * @param {Object.<getProperty~K, getProperty~V>} object    The object to traverse
++ * @param {getProperty~K} key                               An object property with notation a.b.c
++ *
++ * @return {getProperty~V}                                  The value of the found property
+  */
+ function getProperty(object, key) {
+   if ( !key ) return undefined;
+@@ -1298,12 +1305,14 @@ function getProperty(object, key) {
+ /**
+  * A helper function which searches through an object to assign a value using a string key
+  * This string key supports the notation a.b.c which would target object[a][b][c]
++ * @typedef {string} setProperty~K                          An object key
++ * @typedef {*} setProperty~V                               A value to set
+  *
+- * @param object {Object}   The object to update
+- * @param key {String}      The string key
+- * @param value             The value to be assigned
++ * @param {Object.<setProperty~K, setProperty~V>} object    The object to update
++ * @param {setProperty~K} key                               The string key
++ * @param {setProperty~V} value                             The value to be assigned
+  *
+- * @return {Boolean}        A flag for whether or not the object was updated
++ * @return {boolean}                                        A flag for whether or not the object was updated
+  */
+ function setProperty(object, key, value) {
+   let target = object;
+@@ -1482,8 +1491,11 @@ function hsvToRgb(h, s, v) {
+ 
+ /**
+  * Converts a color as an [R, G, B] array of normalized floats to a hexadecimal number.
+- * @param {Array.<Number>} rgb - Array of numbers where all values are normalized floats from 0.0 to 1.0.
+- * @return {Number} Number in hexadecimal.
++ * @param {number[]} rgb    Array of numbers where all values are normalized floats from 0.0 to 1.0.
++ * @param {number} rgb.0    Red color.
++ * @param {number} rgb.1    Green color.
++ * @param {number} rgb.2    Blue color.
++ * @return {number}         Number in hexadecimal.
+  */
+ function rgbToHex(rgb) {
+   return (((rgb[0] * 255) << 16) + ((rgb[1] * 255) << 8) + (rgb[2] * 255 | 0));
+@@ -1522,8 +1534,8 @@ function hexToRGBAString(hex, alpha=1.0) {
+ 
+ /**
+  * Convert a string color to a hex integer
+- * @param {String} color    The string color
+- * @return {Number}         The hexidecimal color code
++ * @param {string} color    The string color
++ * @return {number}         The hexidecimal color code
+  */
+ function colorStringToHex(color) {
+   if ( !color ) return null;
+@@ -1539,9 +1551,9 @@ function colorStringToHex(color) {
+ /**
+  * Return whether or not a version (v1) is more advanced than some other version (v0)
+  * Supports numeric or string version numbers
+- * @param {Number|String} v0
+- * @param {Number|String} v1
+- * @return {Boolean}
++ * @param {number|string} v0
++ * @param {number|string} v1
++ * @return {boolean}
+  */
+ function isNewerVersion(v1, v0) {
+ 
+@@ -2097,6 +2109,9 @@ AudioHelper.levelAnalyserNativeInterval = 50;
+ /**
+  * A reusable storage concept which blends the functionality of an Array with the efficient key-based lookup of a Map.
+  * This concept is reused throughout Foundry VTT where a collection of uniquely identified elements is required.
++ * @typedef {*} Collection~K
++ * @typedef {*} Collection~V
++ *
+  * @extends {Map}
+  */
+ class Collection extends Map {
+@@ -2117,7 +2132,7 @@ class Collection extends Map {
+ 
+   /**
+    * Return an Array of all the entry values in the Collection
+-   * @return {V[]}
++   * @return {Collection~V[]}
+    */
+   get entries() {
+     return Array.from(this.values());
+@@ -2130,7 +2145,7 @@ class Collection extends Map {
+    * @see {Array#find}
+    *
+    * @param {Function} condition  The functional condition to test
+-   * @return {V|null}             The value, if found, otherwise null
++   * @return {Collection~V|null}  The value, if found, otherwise null
+    *
+    * @example
+    * let c = new Collection([["a", "A"], ["b", "B"], ["c", "C"]]);
+@@ -2152,7 +2167,7 @@ class Collection extends Map {
+    * Filter the Collection, returning an Array of entries which match a functional condition.
+    * @see {Array#filter}
+    * @param {Function} condition  The functional condition to test
+-   * @return {V[]}                An Array of matched values
++   * @return {Collection~V[]}     An Array of matched values
+    *
+    * @example
+    * let c = new Collection([["a", "AA"], ["b", "AB"], ["c", "CC"]]);
+@@ -2172,9 +2187,10 @@ class Collection extends Map {
+ 
+   /**
+    * Get an element from the Collection by its key.
+-   * @param {string} key      The key of the entry to retrieve
+-   * @param {boolean} strict  Throw an Error if the requested id does not exist, otherwise return null. Default false
+-   * @return {V|null}         The retrieved entry value, if the key exists, otherwise null
++   * @param {string} Collection~K         The key of the entry to retrieve
++	 * @param {Object} [options]            The options for getting an item
++	 * @param {boolean} [options.strict]    Throw an Error if the requested id does not exist, otherwise return null. Default false
++	 * @return {Collection~V?}              The retrieved entry value, if the key exists, otherwise null
+    *
+    * @example
+    * let c = new Collection([["a", "A"], ["b", "B"], ["c", "C"]]);
+@@ -2195,9 +2211,10 @@ class Collection extends Map {
+   /**
+    * Get an entry from the Collection by name.
+    * Use of this method assumes that the objects stored in the collection have a "name" attribute.
+-   * @param {string} name     The name of the entry to retrieve
+-   * @param {boolean} strict  Throw an Error if the requested id does not exist, otherwise return null. Default false.
+-   * @return {Entity|null}    The retrieved Entity, if one was found, otherwise null;
++	 * @param {string} name                 The name of the entry to retrieve
++	 * @param {Object} [options]            The options for getting an item from the Collection.
++	 * @param {boolean} [options.strict]    Throw an Error if the requested id does not exist, otherwise return null. Default false.
++	 * @return {Collection~V|null}          The retrieved Entity, if one was found, otherwise null;
+    */
+   getName(name, {strict = false} = {}) {
+     const entry = this.find(e => e.name === name);
+@@ -2212,7 +2229,7 @@ class Collection extends Map {
+   /**
+    * Transform each element of the Collection into a new form, returning an Array of transformed values
+    * @param {Function} transformer  The transformation function to apply to each entry value
+-   * @return {V[]}                  An Array of transformed values
++   * @return {Collection~V[]}       An Array of transformed values
+    */
+   map(transformer) {
+     const transformed = [];
+@@ -2227,9 +2244,13 @@ class Collection extends Map {
+   /**
+    * Reduce the Collection by applying an evaluator function and accumulating entries
+    * @see {Array#reduce}
+-   * @param {Function} evaluator    A function which mutates the accumulator each iteration
+-   * @param {any} initial           An initial value which accumulates with each iteration
+-   * @return {any}                  The accumulated result
++   *
++   * @typedef {*} reduce~Accumulator The accumulator type.
++   * @typedef {(accumulator: reduce~Accumulator, item: Collection~V) => reduce~Accumulator} reduce~Evaluator An accumulator function.
++   *
++   * @param {reduce~Evaluator} evaluator    A function which mutates the accumulator each iteration
++   * @param {reduce~Accumulator} initial    An initial value which accumulates with each iteration
++   * @return {reduce~Accumulator}           The accumulated result
+    *
+    * @example
+    * let c = new Collection([["a", "A"], ["b", "B"], ["c", "C"]]);
+@@ -2443,7 +2464,7 @@ class ImageHelper {
+   /**
+    * Create thumbnail preview for a provided image path.
+    * @param {string|PIXI.DisplayObject} src   The URL or display object of the texture to render to a thumbnail
+-   * @param {object} options    Additional named options passed to the compositeCanvasTexture function
++   * @param {Object} options    Additional named options passed to the compositeCanvasTexture function
+    * @return {Promise<object>}  The parsed and converted thumbnail data
+    */
+   static async createThumbnail(src, options) {
+@@ -2470,14 +2491,15 @@ class ImageHelper {
+   /**
+    * Composite a canvas object by rendering it to a single texture
+    *
+-   * @param {PIXI.DisplayObject} object   The object to render to a texture
+-   * @param {number} [width]              The desired width of the output texture
+-   * @param {number} [height]             The desired height of the output texture
+-   * @param {number} [tx]                 A horizontal translation to apply to the object
+-   * @param {number} [ty]                 A vertical translation to apply to the object
+-   * @param {boolean} [center]            Center the texture in the rendered frame?
++   * @param {PIXI.DisplayObject} object    The object to render to a texture
++   * @param {Object} [options]             Options to compisit the texture.
++   * @param {number} [width]               The desired width of the output texture
++   * @param {number} [height]              The desired height of the output texture
++   * @param {number} [tx]                  A horizontal translation to apply to the object
++   * @param {number} [ty]                  A vertical translation to apply to the object
++   * @param {boolean} [center]             Center the texture in the rendered frame?
+    *
+-   * @return {PIXI.Texture}               The composite Texture object
++   * @return {PIXI.Texture}                The composite Texture object
+    */
+   static compositeCanvasTexture(object, {width, height, tx=0, ty=0, center=true}={}) {
+     width = width ?? object.width;
+@@ -2637,7 +2659,7 @@ class KeyboardManager {
+ 
+   /**
+    * The key codes which represent a digit key
+-   * @return {Array.<string>}
++   * @return {string[]}
+    */
+   get digitKeys() {
+     return this.constructor.DIGIT_KEYS;
+@@ -3628,7 +3650,7 @@ class SetupConfiguration {
+   /**
+    * Return the named scopes which can exist for packages.
+    * Scopes are returned in the prioritization order that their content is loaded.
+-   * @return {Array<string>}    An array of string package scopes
++   * @return {string[]}    An array of string package scopes
+    */
+   static getPackageScopes() {
+     let scopes = ["core", game.system.id];
+@@ -4120,19 +4142,19 @@ const MIN_WINDOW_HEIGHT = 50;
+  *                                              following configurations are supported for all Applications. The values
+  *                                              passed to the constructor are combined with the defaultOptions defined
+  *                                              at the class level.
+- * @param {string} options.baseApplication      A named "base application" which generates an additional hook
+- * @param {number} options.width                The default pixel width for the rendered HTML
+- * @param {number} options.height               The default pixel height for the rendered HTML
+- * @param {number} options.top                  The default offset-top position for the rendered HTML
+- * @param {number} options.left                 The default offset-left position for the rendered HTML
+- * @param {boolean} options.popOut              Whether to display the application as a pop-out container
+- * @param {boolean} options.minimizable         Whether the rendered application can be minimized (popOut only)
+- * @param {boolean} options.resizable           Whether the rendered application can be drag-resized (popOut only)
+- * @param {string} options.id                   The default CSS id to assign to the rendered HTML
+- * @param {Array.<string>} options.classes      An array of CSS string classes to apply to the rendered HTML
+- * @param {string} options.title                A default window title string (popOut only)
+- * @param {string} options.template             The default HTML template path to render for this Application
+- * @param {Array.<string>} options.scrollY      A list of unique CSS selectors which target containers that should
++ * @param {string} [options.baseApplication]    A named "base application" which generates an additional hook
++ * @param {number} [options.width]              The default pixel width for the rendered HTML
++ * @param {number} [options.height]             The default pixel height for the rendered HTML
++ * @param {number} [options.top]                The default offset-top position for the rendered HTML
++ * @param {number} [options.left]               The default offset-left position for the rendered HTML
++ * @param {boolean} [options.popOut]            Whether to display the application as a pop-out container
++ * @param {boolean} [options.minimizable]       Whether the rendered application can be minimized (popOut only)
++ * @param {boolean} [options.resizable]         Whether the rendered application can be drag-resized (popOut only)
++ * @param {string} [options.id]                 The default CSS id to assign to the rendered HTML
++ * @param {string[]} [options.classes]          An array of CSS string classes to apply to the rendered HTML
++ * @param {string} [options.title]              A default window title string (popOut only)
++ * @param {string} [options.template]           The default HTML template path to render for this Application
++ * @param {string[]} [options.scrollY]          A list of unique CSS selectors which target containers that should
+  *                                              have their vertical scroll positions preserved during a re-render.
+  *
+  * Hooks:
+@@ -4860,17 +4882,22 @@ class Application {
+ 
+   /* -------------------------------------------- */
+ 
++	/**
++	 * @typedef {Object} setPosition~Options    The position options
++	 * @property {number} [left]                The left offset position in pixels
++	 * @property {number} [top]                 The top offset position in pixels
++	 * @property {number} [width]               The application width in pixels
++	 * @property {number} [height]              The application height in pixels
++	 * @property {number} [scale]               The application scale as a numeric factor where 1.0 is default
++	 **/
++
+   /**
+    * Set the application position and store it's new location.
+    *
+-   * @param {number|null} left            The left offset position in pixels
+-   * @param {number|null} top             The top offset position in pixels
+-   * @param {number|null} width           The application width in pixels
+-   * @param {number|string|null} height   The application height in pixels
+-   * @param {number|null} scale           The application scale as a numeric factor where 1.0 is default
++	 * @param {setPosition~Options} [options]     The position options.
++	 * @param {string|number} [options.height]    The application height in pixels or auto
+    *
+-   * @returns {{left: number, top: number, width: number, height: number, scale:number}}
+-   * The updated position object for the application containing the new values
++	 * @returns {setPosition~Options}             The updated position object for the application containing the new values
+    */
+   setPosition({left, top, width, height, scale}={}) {
+     if ( !this.popOut ) return; // Only configure position for popout apps
+@@ -5146,15 +5173,21 @@ class FormApplication extends Application {
+ 
+   /* -------------------------------------------- */
+ 
++  /**
++   * The options for submission
++   * @typedef {Object} _onSubmit~Options
++   * @property {Object|null} [options.updateData]    Additional specific data keys/values which override or extend the contents of
++   *                                                 the parsed form. This can be used to update other flags or data fields at the
++   *                                                 same time as processing a form submission to avoid multiple database operations.
++   * @property {boolean} [options.preventClose]      Override the standard behavior of whether to close the form on submit
++   * @property {boolean} [options.preventRender]     Prevent the application from re-rendering as a result of form submission
++   * @returns {Promise}                              A promise which resolves to the validated update data
++   */
++
+   /**
+    * Handle standard form submission steps
+-   * @param {Event} event               The submit event which triggered this handler
+-   * @param {Object|null} [updateData]  Additional specific data keys/values which override or extend the contents of
+-   *                                    the parsed form. This can be used to update other flags or data fields at the
+-   *                                    same time as processing a form submission to avoid multiple database operations.
+-   * @param {boolean} [preventClose]    Override the standard behavior of whether to close the form on submit
+-   * @param {boolean} [preventRender]   Prevent the application from re-rendering as a result of form submission
+-   * @returns {Promise}                 A promise which resolves to the validated update data
++   * @param {Event} event                         The submit event which triggered this handler
++   * @param {_onSubmit~Options}    The options for submission.
+    * @private
+    */
+   async _onSubmit(event, {updateData=null, preventClose=false, preventRender=false}={}) {
+@@ -5257,9 +5290,9 @@ class FormApplication extends Application {
+ 
+   /**
+    * This method is called upon form submission after form data is validated
+-   * @param event {Event}       The initial triggering submission event
+-   * @param formData {Object}   The object of validated form data with which to update the object
+-   * @returns {Promise}         A Promise which resolves once the update operation has completed 
++   * @param event {Event}                  The initial triggering submission event
++   * @param formData {Object}              The object of validated form data with which to update the object
++   * @returns {Promise<FormApplication>}   A Promise which resolves once the update operation has completed
+    * @abstract
+    */
+   async _updateObject(event, formData) {
+@@ -5434,8 +5467,8 @@ class FormApplication extends Application {
+ 
+   /**
+    * Submit the contents of a Form Application, processing its content as defined by the Application
+-   * @param {Object|null} options     Options passed to the _onSubmit event handler
+-   * @returns {FormApplication}       Return a self-reference for convenient method chaining
++   * @param {Object} [options]              Options passed to the _onSubmit event handler
++   * @returns {Promise<FormApplication>}    Return a self-reference for convenient method chaining
+    */
+   async submit(options) {
+     if ( this._submitting ) return; 
+@@ -5625,7 +5658,7 @@ class Localization {
+ 
+     /**
+      * The target language for localization
+-     * @type {String}
++     * @type {string}
+      */
+     this.lang = null;
+ 
+@@ -5684,7 +5717,7 @@ class Localization {
+ 
+   /**
+    * Prepare the dictionary of translation strings for the requested language
+-   * @param {String} lang     The language for which to load translations
++   * @param {string} lang     The language for which to load translations
+    * @return {Promise}
+    * @private
+    */
+@@ -5778,8 +5811,8 @@ class Localization {
+   /**
+    * Localize a string by drawing a translation from the available translations dictionary, if available
+    * If a translation is not available, the original string is returned
+-   * @param {String} stringId     The string ID to translate
+-   * @return {String}             The translated string
++   * @param {string} stringId     The string ID to translate
++   * @return {string}             The translated string
+    */
+   localize(stringId) {
+     return getProperty(this.translations, stringId) || getProperty(this._fallback, stringId) || stringId;
+@@ -7239,7 +7272,7 @@ window.addEventListener("DOMContentLoaded", async function() {
+  * This class provides an interface and API for conducting dice rolls.
+  * The basic structure for a dice roll is a string formula and an object of data against which to parse it.
+  *
+- * @param formula {String}    The string formula to parse
++ * @param formula {string}    The string formula to parse
+  * @param data {Object}       The data object against which to parse attributes within the formula
+  *
+  * @see {@link Die}
+@@ -7272,7 +7305,7 @@ class Roll {
+ 
+     /**
+      * The identified terms of the Roll
+-     * @type {Array<Roll|DicePool|DiceTerm|number|string>}
++     * @type {_identifyTerms~DiceTerms}
+      */
+     this.terms = this._identifyTerms(formula);
+ 
+@@ -7290,7 +7323,7 @@ class Roll {
+ 
+     /**
+      * The evaluated results of the Roll
+-     * @type {Array<number|string>}
++     * @type {Array.<number|string>}
+      */
+     this.results = [];
+ 
+@@ -7395,10 +7428,10 @@ class Roll {
+ 
+   /**
+    * Alter the Roll expression by adding or multiplying the number of dice which are rolled
+-   * @param {number} multiply   A factor to multiply. Dice are multiplied before any additions.
+-   * @param {number} add        A number of dice to add. Dice are added after multiplication.
+-   * @param {boolean} [multiplyNumeric]  Apply multiplication factor to numeric scalar terms
+-   * @return {Roll}             The altered Roll expression
++   * @param {number} multiply              A factor to multiply. Dice are multiplied before any additions.
++   * @param {number} add                   A number of dice to add. Dice are added after multiplication.
++   * @param {boolean} [multiplyNumeric]    Apply multiplication factor to numeric scalar terms
++   * @return {Roll}                        The altered Roll expression
+    */
+   alter(multiply, add, {multiplyNumeric=false}={}) {
+     if ( this._rolled ) throw new Error("You may not alter a Roll which has already been rolled");
+@@ -7574,8 +7607,8 @@ class Roll {
+ 
+   /**
+    * Clean the terms of a Roll equation, removing empty space and de-duping arithmetic operators
+-   * @param {Array<DiceTerm|string|number>} terms  The input array of terms
+-   * @return {Array<DiceTerm|string|number>}       The cleaned array of terms
++   * @param {Array.<DiceTerm|string|number>} terms  The input array of terms
++   * @return {Array.<DiceTerm|string|number>}       The cleaned array of terms
+    */
+   static cleanTerms(terms) {
+     return terms.reduce((cleaned, t, i, terms) => {
+@@ -7612,6 +7645,15 @@ class Roll {
+ 
+   /* -------------------------------------------- */
+ 
++  /**
++   * @typedef {Array} _identifyTerms~DiceTerms
++   * @property {Roll} 0
++   * @property {DicePool} 1
++   * @property {DiceTerm} 2
++   * @property {number} 3
++   * @property {string} 4
++   */
++
+   /**
+    * Split a provided Roll formula to identify it's component terms.
+    * Some terms are very granular, like a Number of an arithmetic operator
+@@ -7620,8 +7662,8 @@ class Roll {
+    * Some terms may require recursive evaluation.
+    * @private
+    *
+-   * @param {string} formula  The formula to parse
+-   * @return {Array<Roll|DicePool|DiceTerm|number|string>}       An array of identified terms
++   * @param {string} formula               The formula to parse
++   * @return {_identifyTerms~DiceTerms}    An array of identified terms
+    */
+   _identifyTerms(formula) {
+ 
+@@ -7914,7 +7956,7 @@ class Roll {
+ 
+   /**
+    * Recreate a Roll instance using a provided data object
+-   * @param {object} data   Unpacked data representing the Roll
++   * @param {Object} data   Unpacked data representing the Roll
+    * @return {Roll}         A reconstructed Roll instance
+    */
+   static fromData(data) {
+@@ -9238,7 +9280,7 @@ class DicePool {
+ 
+     /**
+      * The elements of a Dice Pool must be Roll objects or numbers
+-     * @type {Array<Roll|number>}
++     * @type {Array.<Roll|number>}
+      */
+     this.rolls = rolls;
+ 
+@@ -9256,7 +9298,7 @@ class DicePool {
+ 
+     /**
+      * The array of dice pool results which have been rolled
+-     * @type {Array<{result: number, active: boolean}>}
++     * @type {Array.<{result: number, active: boolean}>}
+      */
+     this.results = [];
+ 
+@@ -9375,9 +9417,10 @@ class DicePool {
+ 
+   /**
+    * Evaluate the DicePool, populating the results Array.
+-   * @param {boolean} [minimize]    Apply the minimum possible result for each roll.
+-   * @param {boolean} [maximize]    Apply the maximum possible result for each roll.
+-   * @returns {DiceTerm}    The evaluated dice term
++   * @param {Object} [config]              The DicePool evaluation config
++   * @param {boolean} [config.minimize]    Apply the minimum possible result for each roll.
++   * @param {boolean} [config.maximize]    Apply the maximum possible result for each roll.
++   * @returns {DiceTerm}                   The evaluated dice term
+    */
+   evaluate({minimize=false, maximize=false}={}) {
+     if ( this._evaluated ) {
+@@ -9474,8 +9517,8 @@ class DicePool {
+ 
+   /**
+    * Reconstruct a DicePool instance from a provided data Object
+-   * @param {string} json   The serialized JSON string
+-   * @return {DicePool}     The constructed Dice Pool
++   * @param {string} json    The serialized JSON string
++   * @return {DicePool}      The constructed Dice Pool
+    */
+   static fromJSON(json) {
+     let data;
+@@ -10984,7 +11027,7 @@ class PlaceableObject extends PIXI.Container {
+ 
+   /**
+    * Draw the placeable object into its parent container
+-   * @return {PlaceableObject}    The drawn object
++   * @return {Promise.<PlaceableObject>}    The drawn object
+    */
+   async draw() {
+     throw new Error("A PlaceableObject subclass must define initial drawing procedure.");
+@@ -11244,9 +11287,9 @@ class PlaceableObject extends PIXI.Container {
+ 
+   /**
+    * Rotate the PlaceableObject to a certain angle of facing
+-   * @param {number} angle    The desired angle of rotation
+-   * @param {number} snap     Snap the angle of rotation to a certain target degree increment
+-   * @return {Promise<PlaceableObject>} A Promise which resolves once the rotation has completed
++   * @param {number} angle                  The desired angle of rotation
++   * @param {number} snap                   Snap the angle of rotation to a certain target degree increment
++   * @return {Promise.<PlaceableObject>}    A Promise which resolves once the rotation has completed
+    */
+   async rotate(angle, snap) {
+     if ( this.data.rotation === undefined ) return this;
+@@ -11264,10 +11307,11 @@ class PlaceableObject extends PIXI.Container {
+ 
+   /**
+    * Determine a new angle of rotation for a PlaceableObject either from an explicit angle or from a delta offset.
+-   * @param {number} [angle]    An explicit angle, either this or delta must be provided
+-   * @param {number} [delta]    A relative angle delta, either this or the angle must be provided
+-   * @param {number} [snap]     A precision (in degrees) to which the resulting angle should snap. Default is 0.
+-   * @return {number}           The new rotation angle for the object
++	 * @param {Object} [options]          The options to update the rotation of a PlaceableObject.
++	 * @param {number} [options.angle]    An explicit angle, either this or delta must be provided
++	 * @param {number} [options.delta]    A relative angle delta, either this or the angle must be provided
++	 * @param {number} [options.snap]     A precision (in degrees) to which the resulting angle should snap. Default is 0.
++	 * @return {number}                   The new rotation angle for the object
+    */
+   _updateRotation({angle=null, delta=0, snap=0}={}) {
+     let degrees = Number.isNumeric(angle) ? angle : this.data.rotation + delta;
+@@ -11629,13 +11673,13 @@ class PlaceablesLayer extends CanvasLayer {
+   /**
+    * Customize behaviors of this PlaceablesLayer by modifying some behaviors at a class level
+    * @static
+-   * @type {Object}
++   * @type {Object} layerOptions
+    *
+-   * @property {boolean} canDragCreate        Does this layer support a mouse-drag workflow to create new objects?
+-   * @property {boolean} controllableObjects  Can placeable objects in this layer be controlled?
+-   * @property {boolean} rotatableObjects     Can placeable objects in this layer be rotated?
+-   * @property {boolean} snapToGrid           Do objects in this layer snap to the grid
+-   * @property {number} gridPrecision         At what numeric grid precision do objects snap?
++   * @property {boolean} layerOptions.canDragCreate        Does this layer support a mouse-drag workflow to create new objects?
++   * @property {boolean} layerOptions.controllableObjects  Can placeable objects in this layer be controlled?
++   * @property {boolean} layerOptions.rotatableObjects     Can placeable objects in this layer be rotated?
++   * @property {boolean} layerOptions.snapToGrid           Do objects in this layer snap to the grid
++   * @property {number} layerOptions.gridPrecision         At what numeric grid precision do objects snap?
+    */
+   static get layerOptions() {
+     return {
+@@ -11719,7 +11763,7 @@ class PlaceablesLayer extends CanvasLayer {
+ 
+   /**
+    * An Array of placeable objects in this layer which have the _controlled attribute
+-   * @return {Array.<PlaceableObject>}
++   * @return {PlaceableObject[]}
+    */
+   get controlled() {
+     return Object.values(this._controlled);
+@@ -11856,13 +11900,14 @@ class PlaceablesLayer extends CanvasLayer {
+    * Simultaneously rotate multiple PlaceableObjects using a provided angle or incremental.
+    * This executes a single database operation using Scene.update.
+    * If rotating only a single object, it is better to use the PlaceableObject.rotate instance method.
++   *
++   * @param {Object} [options]           The options for rotating PlaceableObjects
++   * @param {number} [options.angle]     A target angle of rotation (in degrees) where zero faces "south"
++   * @param {number} [options.delta]     An incremental angle of rotation (in degrees)
++   * @param {number} [options.snap]      Snap the resulting angle to a multiple of some increment (in degrees)
++   * @param {Array|Set} [options.ids]    An Array or Set of object IDs to target for rotation
+ 
+-   * @param {number} angle      A target angle of rotation (in degrees) where zero faces "south"
+-   * @param {number} delta      An incremental angle of rotation (in degrees)
+-   * @param {number} snap       Snap the resulting angle to a multiple of some increment (in degrees)
+-   * @param {Array|Set} ids     An Array or Set of object IDs to target for rotation
+-
+-   * @return {Promise}          The resulting Promise from the Scene.update operation
++   * @return {Promise}                   The resulting Promise from the Scene.update operation
+    */
+   async rotateMany({angle=null, delta=null, snap=null, ids=null}={}) {
+     if ((!this.constructor.layerOptions.rotatableObjects ) || (game.paused && !game.user.isGM)) return;
+@@ -11891,11 +11936,12 @@ class PlaceablesLayer extends CanvasLayer {
+    * Simultaneously move multiple PlaceableObjects via keyboard movement offsets.
+    * This executes a single database operation using Scene.update.
+    * If moving only a single object, this will delegate to PlaceableObject.update for performance reasons.
+-   * 
+-   * @param {number} dx         The number of incremental grid units in the horizontal direction
+-   * @param {number} dy         The number of incremental grid units in the vertical direction
+-   * @param {boolean} rotate    Rotate the token to the keyboard direction instead of moving
+-   * @param {Array|Set} ids     An Array or Set of object IDs to target for rotation
++   *
++   * @param {Object} [options]            The options to move PlaceableObjects.
++   * @param {number} [options.dx]         The number of incremental grid units in the horizontal direction
++   * @param {number} [options.dy]         The number of incremental grid units in the vertical direction
++   * @param {boolean} [options.rotate]    Rotate the token to the keyboard direction instead of moving
++   * @param {Array|Set} [options.ids]     An Array or Set of object IDs to target for rotation
+    *
+    * @return {Promise}          The resulting Promise from the Scene.update operation
+    */
+@@ -12066,9 +12112,10 @@ class PlaceablesLayer extends CanvasLayer {
+ 
+   /**
+    * Paste currently copied PlaceableObjects back to the layer by creating new copies
+-   * @param {Point} position      The destination position for the copied data.
+-   * @param {boolean} [hidden]    Paste data in a hidden state, if applicable. Default is false.
+-   * @param {boolean} [snap]      Snap the resulting objects to the grid. Default is true.
++	 * @param {Point} position                  The destination position for the copied data.
++	 * @param {Object}  [options]               The options for pasting PlaceableObjects.
++	 * @param {boolean} [options.hidden]        Paste data in a hidden state, if applicable. Default is false.
++	 * @param {boolean} [options.snap]          Snap the resulting objects to the grid. Default is true.
+    * @return {Promise.<PlaceableObject[]>}    An Array of created PlaceableObject instances
+    */
+   async pasteObjects(position, {hidden=false, snap=true}={}) {
+@@ -12114,13 +12161,14 @@ class PlaceablesLayer extends CanvasLayer {
+   /**
+    * Select all PlaceableObject instances which fall within a coordinate rectangle.
+    *
+-   * @param {number} x      The top-left x-coordinate of the selection rectangle
+-   * @param {number} y      The top-left y-coordinate of the selection rectangle
+-   * @param {number} width  The width of the selection rectangle
+-   * @param {number} height The height of the selection rectangle
+-   * @param {Object} releaseOptions   Optional arguments provided to any called release() method
+-   * @param {Object} controlOptions   Optional arguments provided to any called control() method
+-   * @return {boolean}       A boolean for whether the controlled set was changed in the operation
++   * @param {Object} [options]                   The options to select PlaceableObjects.
++	 * @param {number} [options.x]                 The top-left x-coordinate of the selection rectangle
++	 * @param {number} [options.y]                 The top-left y-coordinate of the selection rectangle
++	 * @param {number} [options.width]             The width of the selection rectangle
++	 * @param {number} [options.height]            The height of the selection rectangle
++	 * @param {Object} [options.releaseOptions]    Optional arguments provided to any called release() method
++	 * @param {Object} [options.controlOptions]    Optional arguments provided to any called control() method
++	 * @return {boolean}                           A boolean for whether the controlled set was changed in the operation
+    */
+   selectObjects({x, y, width, height, releaseOptions={}, controlOptions={}}={}) {
+     if ( !this.options.controllableObjects ) return false;
+@@ -15057,7 +15105,8 @@ class Tabs {
+   /**
+    * Activate a new tab by name
+    * @param {string} tabName
+-   * @param {boolean} triggerCallback
++	 * @param {Object} [options]
++	 * @param {boolean} [options.triggerCallback]
+    */
+   activate(tabName, {triggerCallback=false}={}) {
+ 
+@@ -15764,160 +15813,160 @@ class AVMaster {
+     if ( this.settings.debug ) console.debug(message);
+   }
+ }
+-
+-class AVSettings {
+-  constructor() {
+-    this.initialize();
+-    this._set = debounce((key, value) => game.settings.set("core", key, value), 100);
+-    this._change = debounce(this._onSettingsChanged.bind(this), 100);
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  initialize() {
+-    this.client = game.settings.get("core", "rtcClientSettings");
+-    this.world = game.settings.get("core", "rtcWorldSettings");
+-    this._original = duplicate({client: this.client, world: this.world});
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  changed(settings) {
+-    return this._change(settings);
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  get(scope, setting) {
+-    return getProperty(this[scope], setting);
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  getUser(userId) {
+-    const user = game.users.get(userId);
+-    if ( !user ) return null;
+-    return this._getUserSettings(user);
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  set(scope, setting, value) {
+-    setProperty(this[scope], setting, value);
+-    this._set(`rtc${scope.titleCase()}Settings`, this[scope]);
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  /**
+-   * Return a mapping of AV settings for each game User.
+-   * @type {object}
+-   */
+-  get users() {
+-    const users = {};
+-    for ( let u of game.users ) {
+-      users[u.id] = this._getUserSettings(u);
+-    }
+-    return users;
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  /**
+-   * Prepare a standardized object of user settings data for a single User
+-   * @private
+-   */
+-  _getUserSettings(user) {
+-    const clientSettings = this.client.users[user.id] || {};
+-    const settings = mergeObject(AVSettings.DEFAULT_USER_SETTINGS, clientSettings, {inplace: false});
+-    settings.canBroadcastAudio = user.can('BROADCAST_AUDIO');
+-    settings.canBroadcastVideo = user.can('BROADCAST_VIDEO');
+-    if ( !user.isSelf ) {
+-      settings.muted = !settings.canBroadcastAudio;
+-      settings.hidden = !settings.canBroadcastVideo;
+-    }
+-    return settings;
+-  }
+-
+-  /* -------------------------------------------- */
+-
+-  /**
+-   * Handle setting changes to either rctClientSettings or rtcWorldSettings.
+-   * @private
+-   */
+-  _onSettingsChanged() {
+-    const original = this._original;
+-    this.initialize();
+-    const changed = diffObject(original, this._original);
+-    game.webrtc.onSettingsChanged(changed);
+-    Hooks.callAll("rtcSettingsChanged", this, changed);
+-  }
+-}
+-
+-/**
+- * WebRTC Mode, Disabled, Audio only, Video only, Audio & Video
+- * @type {Object}
+- */
+-AVSettings.AV_MODES = {
+-  DISABLED: 0,
+-  AUDIO: 1,
+-  VIDEO: 2,
+-  AUDIO_VIDEO: 3
+-};
+-
+-AVSettings.VOICE_MODES = {
+-  ALWAYS: "always",
+-  ACTIVITY: "activity",
+-  PTT: "ptt"
+-};
+-
+-AVSettings.DEFAULT_CLIENT_SETTINGS = {
+-  videoSrc: "default",
+-  audioSrc: "default",
+-  audioSink: "default",
+-  dockSize: "medium",
+-  dockPosition: "bottom",
+-  hidePlayerList: false,
+-  muteAll: false,
+-  voice: {
+-    mode: AVSettings.VOICE_MODES.PTT,
+-    pttKey: 192, // Tilde
+-    pttName: "`",
+-    pttMouse: false,
+-    pttDelay: 100,
+-    activityThreshold: -45
+-  },
+-  users: {}
+-};
+-
+-AVSettings.DEFAULT_WORLD_SETTINGS = {
+-  mode: AVSettings.AV_MODES.DISABLED,
+-  server: {
+-    type: "FVTT",
+-    url: "",
+-    room: "",
+-    username: "",
+-    password: ""
+-  },
+-  turn: {
+-    type: "server",
+-    url: "",
+-    username: "",
+-    password: "",
+-  }
+-};
+-
+-AVSettings.DEFAULT_USER_SETTINGS = {
+-  popout: false,
+-  x: 100,
+-  y: 100,
+-  z: 0,
+-  width: 320,
+-  volume: 1.0,
+-  muted: false,
+-  hidden: false,
+-  blocked: false
+-};
++
++class AVSettings {
++  constructor() {
++    this.initialize();
++    this._set = debounce((key, value) => game.settings.set("core", key, value), 100);
++    this._change = debounce(this._onSettingsChanged.bind(this), 100);
++  }
++
++  /* -------------------------------------------- */
++
++  initialize() {
++    this.client = game.settings.get("core", "rtcClientSettings");
++    this.world = game.settings.get("core", "rtcWorldSettings");
++    this._original = duplicate({client: this.client, world: this.world});
++  }
++
++  /* -------------------------------------------- */
++
++  changed(settings) {
++    return this._change(settings);
++  }
++
++  /* -------------------------------------------- */
++
++  get(scope, setting) {
++    return getProperty(this[scope], setting);
++  }
++
++  /* -------------------------------------------- */
++
++  getUser(userId) {
++    const user = game.users.get(userId);
++    if ( !user ) return null;
++    return this._getUserSettings(user);
++  }
++
++  /* -------------------------------------------- */
++
++  set(scope, setting, value) {
++    setProperty(this[scope], setting, value);
++    this._set(`rtc${scope.titleCase()}Settings`, this[scope]);
++  }
++
++  /* -------------------------------------------- */
++
++  /**
++   * Return a mapping of AV settings for each game User.
++   * @type {object}
++   */
++  get users() {
++    const users = {};
++    for ( let u of game.users ) {
++      users[u.id] = this._getUserSettings(u);
++    }
++    return users;
++  }
++
++  /* -------------------------------------------- */
++
++  /**
++   * Prepare a standardized object of user settings data for a single User
++   * @private
++   */
++  _getUserSettings(user) {
++    const clientSettings = this.client.users[user.id] || {};
++    const settings = mergeObject(AVSettings.DEFAULT_USER_SETTINGS, clientSettings, {inplace: false});
++    settings.canBroadcastAudio = user.can('BROADCAST_AUDIO');
++    settings.canBroadcastVideo = user.can('BROADCAST_VIDEO');
++    if ( !user.isSelf ) {
++      settings.muted = !settings.canBroadcastAudio;
++      settings.hidden = !settings.canBroadcastVideo;
++    }
++    return settings;
++  }
++
++  /* -------------------------------------------- */
++
++  /**
++   * Handle setting changes to either rctClientSettings or rtcWorldSettings.
++   * @private
++   */
++  _onSettingsChanged() {
++    const original = this._original;
++    this.initialize();
++    const changed = diffObject(original, this._original);
++    game.webrtc.onSettingsChanged(changed);
++    Hooks.callAll("rtcSettingsChanged", this, changed);
++  }
++}
++
++/**
++ * WebRTC Mode, Disabled, Audio only, Video only, Audio & Video
++ * @type {Object}
++ */
++AVSettings.AV_MODES = {
++  DISABLED: 0,
++  AUDIO: 1,
++  VIDEO: 2,
++  AUDIO_VIDEO: 3
++};
++
++AVSettings.VOICE_MODES = {
++  ALWAYS: "always",
++  ACTIVITY: "activity",
++  PTT: "ptt"
++};
++
++AVSettings.DEFAULT_CLIENT_SETTINGS = {
++  videoSrc: "default",
++  audioSrc: "default",
++  audioSink: "default",
++  dockSize: "medium",
++  dockPosition: "bottom",
++  hidePlayerList: false,
++  muteAll: false,
++  voice: {
++    mode: AVSettings.VOICE_MODES.PTT,
++    pttKey: 192, // Tilde
++    pttName: "`",
++    pttMouse: false,
++    pttDelay: 100,
++    activityThreshold: -45
++  },
++  users: {}
++};
++
++AVSettings.DEFAULT_WORLD_SETTINGS = {
++  mode: AVSettings.AV_MODES.DISABLED,
++  server: {
++    type: "FVTT",
++    url: "",
++    room: "",
++    username: "",
++    password: ""
++  },
++  turn: {
++    type: "server",
++    url: "",
++    username: "",
++    password: "",
++  }
++};
++
++AVSettings.DEFAULT_USER_SETTINGS = {
++  popout: false,
++  x: 100,
++  y: 100,
++  z: 0,
++  width: 320,
++  volume: 1.0,
++  muted: false,
++  hidden: false,
++  blocked: false
++};
+ 
+ /**
+  * The default Actor Sheet
+@@ -16783,7 +16832,11 @@ class ImagePopout extends FormApplication {
+ 
+   /**
+    * Determine the correct position and dimensions for the displayed image
+-   * @returns {Object}    The positioning object which should be used for rendering
++   * @returns {Object} position            The positioning object which should be used for rendering
++   * @property {number} position.width     The width of the image.
++   * @property {number} position.height    The height of the image.
++   * @property {number} [position.top]     The top offset of the image.
++   * @property {number} [position.right]   The right offset of the image.
+    * @private
+    */
+   static async getPosition(img) {
+@@ -16815,7 +16868,7 @@ class ImagePopout extends FormApplication {
+ 
+   /**
+    * Determine the Image dimensions given a certain path
+-   * @return {Promise<Array.<Number>>}
++   * @return {Promise.<number[]>}
+    */
+   static getImageSize(path) {
+     return new Promise((resolve, reject) => {
+@@ -24725,7 +24778,7 @@ class EntityCollection extends Collection {
+ 
+   /**
+    * Render any Applications associated with this EntityCollection
+-   * @return {this}     A reference to the rendered EntityCollection
++   * @return {Application}    A reference to the rendered EntityCollection
+    */
+   render(...args) {
+     for (let a of this.apps) a.render(...args);
+@@ -25025,8 +25078,8 @@ class Compendium extends Application {
+ 
+   /**
+    * Create a new Compendium pack using provided
+-   * @param {Object} metadata   The compendium metadata used to create the new pack
+-   * @param {Options} options   Additional options which modify the Compendium creation request
++   * @param {Object} metadata      The compendium metadata used to create the new pack
++   * @param {Options} [options]    Additional options which modify the Compendium creation request
+    * @return {Promise.<Compendium>}
+    */
+   static async create(metadata, options={}) {
+@@ -25164,8 +25217,9 @@ class Compendium extends Application {
+ 
+   /**
+    * Fully import the contents of a Compendium pack into a World folder.
+-   * @param {string|null} [folderId]  An existing Folder _id to use.
+-   * @param {string} [folderName]     A new Folder name to create.
++	 * @param {Object} [options]                The optoins for importing a compendium.
++	 * @param {string|null} [options.folderId]  An existing Folder _id to use.
++	 * @param {string} [options.folderName]     A new Folder name to create.
+    * @return {Promise<*>}
+    */
+   async importAll({folderId=null, folderName=""}={}) {
+@@ -25236,9 +25290,9 @@ class Compendium extends Application {
+ 
+   /**
+    * Create a new Entity within this Compendium Pack using provided data
+-   * @param {Object} data       Data with which to create the entry
+-   * @param {Options} options   Additional options which modify the creation
+-   * @return {Promise}          A Promise which resolves to the created Entity once the operation is complete
++   * @param {Object} data          Data with which to create the entry
++   * @param {Options} [options]    Additional options which modify the creation
++   * @return {Promise}             A Promise which resolves to the created Entity once the operation is complete
+    */
+   async createEntity(data, options={}) {
+     this._assertUserCanModify();
+@@ -25730,8 +25784,8 @@ class Entity {
+   /**
+    * Render all of the Application instances which are connected to this Entity by calling their respective
+    * {@link Application#render} methods.
+-   * @param {boolean} force     Force rendering
+-   * @param {Options} context   Optional context
++   * @param {boolean} force       Force rendering
++   * @param {Options} [context]   Optional context
+    */
+   render(force, context={}) {
+     const permChange = context.data && ("permission" in context.data);
+@@ -26072,12 +26126,12 @@ class Entity {
+    * Entities may be temporary (unsaved to the database) by passing the temporary option as true.
+    * @static
+    *
+-   * @param {Data|Data[]} data            A Data object or array of Data
+-   * @param {Options} options             Additional options which customize the creation workflow
++   * @param {Data|Data[]} data                A Data object or array of Data
++   * @param {Options} [options]               Additional options which customize the creation workflow
+    * @param {boolean} [options.temporary]     Create a temporary entity which is not saved to the world database. Default is false.
+    * @param {boolean} [options.renderSheet]   Display the sheet for the created entity once it is created. Default is false.
+-   * 
+-   * @return {Promise<Entity|Entity[]>}   The created Entity or array of Entities
++   *
++   * @return {Promise<Entity|Entity[]>}       The created Entity or array of Entities
+    *
+    * @example
+    * const data = {name: "New Entity", type: "character", img: "path/to/profile.jpg"};
+@@ -26186,7 +26240,7 @@ class Entity {
+    * @static
+    *
+    * @param {Data|Data[]} data            A Data object or array of Data. Each element must contain the _id of an existing Entity.
+-   * @param {Options} options             Additional options which customize the update workflow
++   * @param {Options} [options]           Additional options which customize the update workflow
+    * @param {boolean} [options.diff]      Difference the provided data against the current to eliminate unnecessary changes.
+    *
+    * @return {Promise<Entity|Entity[]>}   The updated Entity or array of Entities
+@@ -26304,9 +26358,9 @@ class Entity {
+    * Data must be provided as a single object which updates the Entity data.
+    * @see {Entity.update}
+    *
+-   * @param {Data} data                   A Data object which updates the Entity
+-   * @param {Options} options             Additional options which customize the update workflow
+-   * @return {Promise<Entity>}            The updated Entity
++   * @param {Data} data            A Data object which updates the Entity
++   * @param {Options} [options]    Additional options which customize the update workflow
++   * @return {Promise<Entity>}     The updated Entity
+    */
+   async update(data, options={}) {
+     data._id = this._id;
+@@ -26329,7 +26383,7 @@ class Entity {
+    * @static
+    *
+    * @param {string|string[]} data            A single id or Array of ids
+-   * @param {Options} options                 Additional options which customize the deletion workflow
++   * @param {Options} [options]               Additional options which customize the deletion workflow
+ 
+    * @return {Promise<Entity|Entity[]>}       The deleted Entity or array of Entities
+    *
+@@ -26431,8 +26485,8 @@ class Entity {
+    * Delete the current Entity.
+    * @see {Entity.delete}
+ 
+-   * @param {Options} options             Options which customize the deletion workflow
+-   * @return {Promise<Entity>}            The deleted Entity
++   * @param {Options} [options]    Options which customize the deletion workflow
++   * @return {Promise<Entity>}     The deleted Entity
+    */
+   async delete(options={}) {
+     if ( this.compendium ) return this.compendium.deleteEntity(this._id, {entity: this});
+@@ -26446,10 +26500,11 @@ class Entity {
+   /**
+    * Get an Embedded Entity by it's id from a named collection in the parent Entity.
+    *
+-   * @param {string} embeddedName   The name of the Embedded Entity type to retrieve
+-   * @param {string} id             The numeric ID of the child to retrieve
+-   * @param {boolean} strict        Throw an Error if the requested id does not exist, otherwise return null. Default false.
+-   * @return {Object|null}          Retrieved data for the requested child, or null
++	 * @param {string} embeddedName         The name of the Embedded Entity type to retrieve
++	 * @param {string} id                   The numeric ID of the child to retrieve
++	 * @param {Objects} [options]           The options to get an embedded entity
++	 * @param {boolean} [options.strict]    Throw an Error if the requested id does not exist, otherwise return null. Default false.
++	 * @return {Object|null}                Retrieved data for the requested child, or null
+    */
+   getEmbeddedEntity(embeddedName, id, {strict=false}={}) {
+     const collection = this.getEmbeddedCollection(embeddedName);
+@@ -26467,11 +26522,11 @@ class Entity {
+    * Data may be provided as a single Object to create one EmbeddedEntity or as an Array of Objects to create many.
+    * Entities may be temporary (unsaved to the database) by passing the temporary option as true.
+    *
+-   * @param {string} embeddedName   The name of the Embedded Entity class to create
+-   * @param {Data|Data[]} data      A Data object or an Array of Data objects to create
+-   * @param {Options} options       Additional creation options which modify the request
+-   * @param {boolean} [options.temporary]     Create a temporary entity which is not saved to the world database. Default is false.
+-   * @param {boolean} [options.renderSheet]   Display the sheet for each created Embedded Entities once created.
++   * @param {string} embeddedName              The name of the Embedded Entity class to create
++   * @param {Data|Data[]} data                 A Data object or an Array of Data objects to create
++   * @param {Options} [options]                Additional creation options which modify the request
++   * @param {boolean} [options.temporary]      Create a temporary entity which is not saved to the world database. Default is false.
++   * @param {boolean} [options.renderSheet]    Display the sheet for each created Embedded Entities once created.
+    *
+    * @return {Promise<Data|Data[]>} A Promise which resolves to the created embedded Data once the creation request is successful
+    *
+@@ -26578,9 +26633,9 @@ class Entity {
+    * Data may be provided as a single object to update one Entity, or as an Array of Objects.
+    * @static
+    *
+-   * @param {string} embeddedName   The name of the Embedded Entity class to create
++   * @param {string} embeddedName         The name of the Embedded Entity class to create
+    * @param {Data|Data[]} data            A Data object or array of Data. Each element must contain the _id of an existing Entity.
+-   * @param {Options} options             Additional options which customize the update workflow
++   * @param {Options} [options]           Additional options which customize the update workflow
+    * @param {boolean} [options.diff]      Difference the provided data against the current to eliminate unnecessary changes.
+    *
+    * @return {Promise<Entity|Entity[]>}   The updated Entity or array of Entities
+@@ -26709,9 +26764,9 @@ class Entity {
+    * Data may be provided as a single id to delete one object or as an Array of string ids.
+    * @static
+    *
+-   * @param {string} embeddedName   The name of the Embedded Entity class to create
+-   * @param {string|string[]} data        A Data object or array of Data. Each element must contain the _id of an existing Entity.
+-   * @param {Options} options             Additional options which customize the update workflow
++   * @param {string} embeddedName     The name of the Embedded Entity class to create
++   * @param {string|string[]} data    A Data object or array of Data. Each element must contain the _id of an existing Entity.
++   * @param {Options} [options]       Additional options which customize the update workflow
+ 
+    * @return {Promise<Data|Data[]>}       The deleted Embedded Entities
+    *
+@@ -27966,14 +28021,13 @@ class CombatEncounters extends EntityCollection {
+ /* -------------------------------------------- */
+ 
+ /**
+- * @typedef {{
+- *   token: Token|null,
+- *   actor: Actor|null,
+- *   name: string,
+- *   players: User[],
+- *   owner: boolean,
+- *   visible: boolean
+- * }} Combatant
++ * @typedef {Object} Combatant
++ * @property {Token|null} token
++ * @property {Actor|null} actor
++ * @property {string} name
++ * @property {User[]} players
++ * @property {boolean} owner
++ * @property {boolean} visible
+  */
+ 
+ /**
+@@ -28196,7 +28250,7 @@ class Combat extends Entity {
+   /**
+    * Set the current Combat encounter as active within the Scene.
+    * Deactivate all other Combat encounters within the viewed Scene and set this one as active
+-   * @return {Promise<Combat>}
++   * @return {Promise.<Combat>}
+    */
+   async activate() {
+     const scene = game.scenes.viewed;
+@@ -28212,7 +28266,7 @@ class Combat extends Entity {
+ 
+   /**
+    * Begin the combat encounter, advancing to round 1 and turn 1
+-   * @return {Promise<Combat>}
++   * @return {Promise.<Combat>}
+    */
+   async startCombat() {
+     return this.update({round: 1, turn: 0});
+@@ -28222,7 +28276,7 @@ class Combat extends Entity {
+ 
+   /**
+    * Advance the combat to the next turn
+-   * @return {Promise<Combat>}
++   * @return {Promise.<Combat>}
+    */
+   async nextTurn() {
+     let turn = this.turn;
+@@ -28256,7 +28310,7 @@ class Combat extends Entity {
+ 
+   /**
+    * Rewind the combat to the previous turn
+-   * @return {Promise<Combat>}
++   * @return {Promise.<Combat>}
+    */
+   async previousTurn() {
+     if ( this.turn === 0 && this.round === 0 ) return Promise.resolve();
+@@ -28270,7 +28324,7 @@ class Combat extends Entity {
+ 
+   /**
+    * Advance the combat to the next round
+-   * @return {Promise<Combat>}
++   * @return {Promise.<Combat>}
+    */
+   async nextRound() {
+     let turn = 0;
+@@ -28290,7 +28344,7 @@ class Combat extends Entity {
+ 
+   /**
+    * Rewind the combat to the previous round
+-   * @return {Promise<Combat>}
++   * @return {Promise.<Combat>}
+    */
+   async previousRound() {
+     let turn = ( this.round === 0 ) ? 0 : this.turns.length - 1;
+@@ -28304,7 +28358,7 @@ class Combat extends Entity {
+ 
+   /**
+    * Reset all combatant initiative scores, setting the turn back to zero
+-   * @return {Promise<Combat>}
++   * @return {Promise.<Combat>}
+    */
+   async resetAll() {
+     const updates = this.data.combatants.map(c => { return {
+@@ -28366,12 +28420,13 @@ class Combat extends Entity {
+ 
+   /**
+    * Roll initiative for one or multiple Combatants within the Combat entity
+-   * @param {string|string[]} ids     A Combatant id or Array of ids for which to roll
+-   * @param {string|null} [formula]   A non-default initiative formula to roll. Otherwise the system default is used.
+-   * @param {boolean} [updateTurn]    Update the Combat turn after adding new initiative scores to keep the turn on
+-   *                                  the same Combatant.
+-   * @param {object} [messageOptions] Additional options with which to customize created Chat Messages
+-   * @return {Promise<Combat>}        A promise which resolves to the updated Combat entity once updates are complete.
++	 * @param {string|string[]} ids             A Combatant id or Array of ids for which to roll
++	 * @param {Object} [options]                The initative options.
++	 * @param {string|null} [options.formula]   A non-default initiative formula to roll. Otherwise the system default is used.
++	 * @param {boolean} [options.updateTurn]    Update the Combat turn after adding new initiative scores to keep the turn on
++	 *                                          the same Combatant.
++	 * @param {object} [options.messageOptions] Additional options with which to customize created Chat Messages
++	 * @return {Promise.<Combat>}                A promise which resolves to the updated Combat entity once updates are complete.
+    */
+   async rollInitiative(ids, {formula=null, updateTurn=true, messageOptions={}}={}) {
+ 
+@@ -28720,9 +28775,10 @@ class Folder extends Entity {
+   /**
+    * Export all Entities contained in this Folder to a given Compendium pack.
+    * Optionally update existing Entities within the Pack by name, otherwise append all new entries.
+-   * @param {Compendium} pack       A Compendium pack to which the entities will be exported
+-   * @param {boolean} updateByName  Update existing entries in the Compendium pack, matching by name
+-   * @return {Promise<Compendium>}  The updated Compendium Pack
++   * @param {Compendium} pack                   A Compendium pack to which the entities will be exported
++   * @param {Object} [options]                  The options for exporting a compendium
++   * @param {boolean} [options.updateByName]    Update existing entries in the Compendium pack, matching by name
++   * @return {Promise.<Compendium>}             The updated Compendium Pack
+    */
+   async exportToCompendium(pack, {updateByName=false}={}) {
+     const index = await pack.getIndex();
+@@ -30176,7 +30232,7 @@ class Playlist extends Entity {
+ 
+   /**
+    * Begin simultaneous playback for all sounds in the Playlist
+-   * @return {Promise}    A Promise which resolves once the Playlist update is complete
++   * @return {Promise.<Playlist>}    A Promise which resolves once the Playlist update is complete
+    */
+   async playAll() {
+     const updateData = {};
+@@ -30796,11 +30852,12 @@ class Scene extends Entity {
+ 
+   /**
+    * Create a 300px by 100px thumbnail image for this scene background
+-   * @param {string} [string|null] A background image to use for thumbnail creation, otherwise the current scene
+-   *                          background is used.
+-   * @param {number} [width]  The desired thumbnail width. Default is 300px
+-   * @param {number} [height] The desired thumbnail height. Default is 100px;
+-   * @return {object}         The created thumbnail data.
++	 * @param {Object} [options]             The options for creating an image thumbnail
++	 * @param {string|null} [options.img]    A background image to use for thumbnail creation, otherwise the current scene
++	 *                                       background is used.
++	 * @param {number} [options.width]       The desired thumbnail width. Default is 300px
++	 * @param {number} [options.height]      The desired thumbnail height. Default is 100px;
++	 * @return {object}                      The created thumbnail data.
+    */
+   async createThumbnail({img, width=300, height=100}={}) {
+     const tiles = this.data.tiles;
+@@ -30929,7 +30986,7 @@ class RollTable extends Entity {
+ 
+   /**
+    * A convenience accessor for the array of TableResult embedded documents
+-   * @type {Array.<Object>}
++   * @type {Object[]}
+    */
+ 	get results() {
+     return this.data.results;
+@@ -31307,7 +31364,7 @@ class Users extends EntityCollection {
+ 
+   /**
+    * Get the users with player roles
+-   * @return {Array.<User>}
++   * @return {User[]}
+    */
+   get players() {
+     return this.entities.filter(u => u.isRole("PLAYER") || u.isRole("TRUSTED"));
+@@ -31600,10 +31657,11 @@ class User extends Entity {
+ 
+   /**
+    * Assign a Macro to a numbered hotbar slot between 1 and 50
+-   * @param {Macro|null} macro  The Macro entity to assign
+-   * @param {number} slot       The integer Hotbar slot to fill
+-   * @param {number} [fromSlot] An optional origin slot from which the Macro is being shifted
+-   * @return {Promise}          A Promise which resolves once the User update is complete
++	 * @param {Macro|null} macro            The Macro entity to assign
++	 * @param {number} slot                 The integer Hotbar slot to fill
++	 * @param {Object} [options]            Hotbar macro options
++	 * @param {number} [options.fromSlot]   An optional origin slot from which the Macro is being shifted
++	 * @return {Promise}                    A Promise which resolves once the User update is complete
+    */
+   async assignHotbarMacro(macro, slot, {fromSlot=null}={}) {
+     if ( !(macro instanceof Macro) && (macro !== null) ) throw new Error("Invalid Macro provided");
+@@ -31633,7 +31691,7 @@ class User extends Entity {
+   /**
+    * Get an Array of Macro Entities on this User's Hotbar by page
+    * @param {number} page     The hotbar page number
+-   * @return {Array.<Object>}
++   * @return {Object[]}
+    */
+   getHotbarMacros(page=1) {
+     const macros = Array.fromRange(50).map(m => null);
+@@ -31750,7 +31808,7 @@ class UserTargets extends Set {
+ 
+   /**
+    * Return the Token IDs which are user targets
+-   * @return {Array.<string>}
++   * @return {string[]}
+    */
+   get ids() {
+     return Array.from(this).map(t => t.id);
+@@ -31913,9 +31971,9 @@ class ActiveEffect extends EmbeddedEntity {
+   /**
+    * A convenience method for updating an ActiveEffect instance in an parent Actor.
+    * @see {@link Actor#updateEmbeddedEntity}
+-   * @param {Data} data           Differential data with which to update the ActiveEffect.
+-   * @param {Options} options     Configuration options which modify the request.
+-   * @return {Promise<Data>}      The updated ActiveEffect data.
++   * @param {Data} data            Differential data with which to update the ActiveEffect.
++   * @param {Options} [options]    Configuration options which modify the request.
++   * @return {Promise<Data>}       The updated ActiveEffect data.
+    */
+   async update(data, options) {
+     data._id = this.id;
+@@ -31927,8 +31985,8 @@ class ActiveEffect extends EmbeddedEntity {
+   /**
+    * A convenience method for deleting an ActiveEffect instance in an parent Actor.
+    * @see {@link Actor#deleteEmbeddedEntity}
+-   * @param {Options} options     Configuration options which modify the request.
+-   * @return {Promise<string>}    The deleted ActiveEffect _id.
++   * @param {Options} [options]    Configuration options which modify the request.
++   * @return {Promise<string>}     The deleted ActiveEffect _id.
+    */
+   async delete(options) {
+     return this.parent.deleteEmbeddedEntity("ActiveEffect", this.id, options);
+@@ -33117,8 +33175,8 @@ class Quadtree {
+ 
+   /**
+    * Remove an object from the quadtree
+-   * @param {target}      The quadtree target being removed
+-   * @return {Quadtree}   The Quadtree for method chaining
++   * @param {target} target    The quadtree target being removed
++   * @return {Quadtree}        The Quadtree for method chaining
+    */
+   remove(target) {
+     this.objects.findSplice(o => o.t === target);
+@@ -33217,8 +33275,8 @@ class Quadtree {
+   /**
+    * Obtain the leaf nodes to which a target rectangle belongs.
+    * This traverses the quadtree recursively obtaining the final nodes which have no children.
+-   * @param {Rectangle} rect  The target rectangle.
+-   * @return {Quadtree[]}     The Quadtree nodes to which the target rectangle belongs
++   * @param {Rectangle} rect    The target rectangle.
++   * @return {Quadtree[]}       The Quadtree nodes to which the target rectangle belongs
+    */
+   getLeafNodes(rect) {
+     if ( !this.nodes.length ) return [this];
+@@ -33268,7 +33326,8 @@ class Quadtree {
+ 
+   /**
+    * Visualize the nodes and objects in the quadtree
+-   * @param {boolean} [objects]    Visualize the rectangular bounds of objects in the Quadtree. Default is false.
++	 * @param {Object} [options]            The options to visualize the Quadtree.
++	 * @param {boolean} [options.objects]   Visualize the rectangular bounds of objects in the Quadtree. Default is false.
+    */
+   visualize({objects=false}={}) {
+     const debug = canvas.controls.debug;
+@@ -33387,9 +33446,9 @@ class Ray {
+ 
+   /**
+    * A factory method to construct a Ray from points in array format.
+-   * @param {number[]} A    The origin point [x,y]
+-   * @param {number[]} B    The destination point [x,y]
+-   * @return {Ray}          The constructed Ray instance
++   * @param {PointArray} A    The origin point [x,y]
++   * @param {PointArray} B    The destination point [x,y]
++   * @return {Ray}            The constructed Ray instance
+    */
+   static fromArrays(A, B) {
+     return new this({x: A[0], y: A[1]}, {x: B[0], y: B[1]});
+@@ -33607,19 +33666,20 @@ class PointSource {
+ 
+   /**
+    * Initialize the source with provided object data.
+-   *
+-   * @param {number} x          The x-coordinate of the source location
+-   * @param {number} y          The y-coordinate of the source location
+-   * @param {number} dim        The allowed radius of dim vision or illumination
+-   * @param {number} bright     The allowed radius of bright vision or illumination
+-   * @param {number} angle      The angle of emission for this point source
+-   * @param {number} rotation   The angle of rotation for this point source
+-   * @param {string} color      A tint color for the emitted light, if any
+-   * @param {number} alpha      An opacity for the emitted light, if any
+-   * @param {number} darknessThreshold  A level of darkness beyond which this light is active
+-   * @param {string} type       The source type from SOURCE_TYPES
+-   *
+-   * @return {PointSource}      A reference to the initialized source
++	 * @param {Object} [options]                      The options to initialize the Point Source
++	 * @param {number} [options.x]                    The x-coordinate of the source location
++	 * @param {number} [options.y]                    The y-coordinate of the source location
++	 * @param {number} [options.dim]                  The allowed radius of dim vision or illumination
++	 * @param {number} [options.bright]               The allowed radius of bright vision or illumination
++	 * @param {number} [options.angle]                The angle of emission for this point source
++	 * @param {number} [options.rotation]             The angle of rotation for this point source
++	 * @param {string} [options.color]                A tint color for the emitted light, if any
++	 * @param {number} [options.alpha]                An opacity for the emitted light, if any
++	 * @param {number} [options.animation]            An animation for the point source
++	 * @param {number} [options.darknessThreshold]    A level of darkness beyond which this light is active
++	 * @param {string} [options.type]                 The source type from SOURCE_TYPES
++ 	 *
++	 * @return {PointSource}                          A reference to the initialized source
+    */
+   initialize({x, y, dim, bright, angle, rotation, color, alpha, animation, darknessThreshold, type}={}) {
+ 
+@@ -33764,9 +33824,10 @@ class PointSource {
+ 
+   /**
+    * A basic "torch" animation which flickers like a burning flame.
+-   * @param {number} dt         Delta time
+-   * @param {number} speed      The animation speed, from 1 to 10
+-   * @param {number} intensity  The animation intensity, from 1 to 10
++	 * @param {number} dt                     Delta time
++	 * @param {Object} [options]              the options of a torch.
++	 * @param {number} [options.speed]        The animation speed, from 1 to 10
++	 * @param {number} [options.intensity]    The animation intensity, from 1 to 10
+    */
+   animateTorch(dt, {speed=5, intensity=5}={}) {
+ 
+@@ -33800,9 +33861,10 @@ class PointSource {
+ 
+   /**
+    * A basic "pulse" animation which expands and contracts.
+-   * @param {number} dt         Delta time
+-   * @param {number} speed      The animation speed, from 1 to 10
+-   * @param {number} intensity  The animation intensity, from 1 to 10
++	 * @param {number} dt                     Delta time
++	 * @param {Object} [options]              The options for the pulse
++	 * @param {number} [options.speed]        The animation speed, from 1 to 10
++	 * @param {number} [options.intensity]    The animation intensity, from 1 to 10
+    */
+   animatePulse(dt, {speed=5, intensity=5}={}) {
+ 
+@@ -33833,9 +33895,10 @@ class PointSource {
+ 
+   /**
+    * A color-shifting animation which evolves the tint color of the displayed light source.
+-   * @param {number} dt         Delta time
+-   * @param {number} speed      The animation speed, from 1 to 10
+-   * @param {number} intensity  The animation intensity, from 1 to 10
++	 * @param {number} dt                     Delta time
++	 * @param {Object} [options]              The options
++	 * @param {number} [options.speed]        The animation speed, from 1 to 10
++	 * @param {number} [options.intensity]    The animation intensity, from 1 to 10
+    */
+   animateChroma(dt, {speed=5, intensity=5}={}) {
+     const cu = this.coloration.uniforms;
+@@ -36667,7 +36730,7 @@ class WallsLayer extends PlaceablesLayer {
+   /**
+    * An Array of Wall instances in the current Scene which currently block Token vision.
+    * This array includes doors regardless of their current door state.
+-   * @type {Array.<Wall>}
++   * @type {Wall[]}
+    */
+   get blockVision() {
+     return this.objects.children.filter(w => w.data.sense !== CONST.WALL_SENSE_TYPES.NONE);
+@@ -36678,7 +36741,7 @@ class WallsLayer extends PlaceablesLayer {
+   /**
+    * An Array of Wall instances in the current Scene which block Token movement.
+    * This array includes doors regardless of their current door state.
+-   * @type {Array.<Wall>}
++   * @type {Wall[]}
+    */
+   get blockMovement() {
+     return this.objects.children.filter(w => w.data.move !== CONST.WALL_MOVEMENT_TYPES.NONE);
+@@ -36688,7 +36751,7 @@ class WallsLayer extends PlaceablesLayer {
+ 
+   /**
+    * An Array of Wall instances in the current Scene which act as Doors.
+-   * @type {Array.<Wall>}
++   * @type {Wall[]}
+    */
+   get doors() {
+     return this.objects.children.filter(w => w.data.door > CONST.WALL_DOOR_TYPES.NONE);
+@@ -36945,7 +37008,7 @@ class WallsLayer extends PlaceablesLayer {
+    * Require snap-to-grid until a redesign of the wall chaining system can occur.
+    * @param {Object} point          The initial candidate point
+    * @param {boolean} [snap=true]   Whether to snap to grid
+-   * @return {number[]}             The endpoint coordinates [x,y]
++   * @return {PointArray}             The endpoint coordinates [x,y]
+    * @private
+    */
+   _getWallEndpointCoordinates(point, {snap=true}={}) {
+@@ -37096,9 +37159,9 @@ class WallsLayer extends PlaceablesLayer {
+ 
+   /**
+    * Test a single Ray against a single Wall
+-   * @param {Ray} ray           The Ray being cast
+-   * @param {Wall} wall         The Wall against which to test
+-   * @return {RayIntersection}  An intersection, if one occurred
++   * @param {Ray} ray            The Ray being cast
++   * @param {Wall} wall          The Wall against which to test
++   * @return {RayIntersection?}  An intersection, if one occurred
+    */
+   static testWall(ray, wall) {
+     let i = ray.intersectSegment(wall.data.c);
+@@ -37113,8 +37176,8 @@ class WallsLayer extends PlaceablesLayer {
+ 
+   /**
+    * Identify the closest collision point from an array of collisions
+-   * @param {RayIntersection[]} collisions  An array of intersection points
+-   * @return {RayIntersection}              The closest blocking intersection
++   * @param {RayIntersection[]} collisions   An array of intersection points
++   * @return {RayIntersection?}              The closest blocking intersection
+    */
+   static getClosestCollision(collisions) {
+     if ( !collisions.length ) return null;
+@@ -38375,8 +38438,9 @@ class AmbientLight extends PlaceableObject {
+ 
+   /**
+    * Update the source object associated with this light
+-   * @param {boolean} defer     Defer refreshing the LightingLayer to manually call that refresh later.
+-   * @param {boolean} deleted   Indicate that this light source has been deleted.
++   * @param {Object} [options]            Options for updating a light source.
++   * @param {boolean} [options.defer]     Defer refreshing the LightingLayer to manually call that refresh later.
++   * @param {boolean} [options.deleted]   Indicate that this light source has been deleted.
+    */
+   updateSource({defer=false, deleted=false}={}) {
+     if ( deleted ) {
+@@ -39997,9 +40061,9 @@ class Token extends PlaceableObject {
+ 
+   /**
+    * The Token's current central position
++   * @type {Object}
+    * @property x The central x-coordinate
+    * @property y The central y-coordinate
+-   * @type {Object}
+    */
+   get center() {
+     return this.getCenter(this.data.x, this.data.y);
+@@ -40131,9 +40195,10 @@ class Token extends PlaceableObject {
+ 
+   /**
+    * Update the light and vision source objects associated with this Token
+-   * @param {boolean} [defer]           Defer refreshing the SightLayer to manually call that refresh later.
+-   * @param {boolean} [deleted]         Indicate that this light source has been deleted.
+-   * @param {boolean} [noUpdateFog]     Never update the Fog exploration progress for this update.
++   * @param {Object} [options]                  Options for updating the l
++   * @param {boolean} [options.defer]           Defer refreshing the SightLayer to manually call that refresh later.
++   * @param {boolean} [options.deleted]         Indicate that this light source has been deleted.
++   * @param {boolean} [options.noUpdateFog]     Never update the Fog exploration progress for this update.
+    */
+   updateSource({defer=false, deleted=false, noUpdateFog=false}={}) {
+     if ( CONFIG.debug.sight ) {
+@@ -40439,9 +40504,10 @@ class Token extends PlaceableObject {
+ 
+   /**
+    * A helper method to retrieve the underlying data behind one of the Token's attribute bars
+-   * @param {string} barName        The named bar to retrieve the attribute for
+-   * @param {string} alternative    An alternative attribute path to get instead of the default one
+-   * @return {Object|null}          The attribute displayed on the Token bar, if any
++	 * @param {string} barName                The named bar to retrieve the attribute for
++	 * @param {Object} [options]              Options for the bar attribute.
++	 * @param {string} [options.alternative]  An alternative attribute path to get instead of the default one
++	 * @return {Object|null}                  The attribute displayed on the Token bar, if any
+    */
+   getBarAttribute(barName, {alternative}={}) {
+     const attr = alternative || (barName ? this.data[barName].attribute : null);
+@@ -40795,10 +40861,11 @@ class Token extends PlaceableObject {
+   /**
+    * Set the token's position by comparing its center position vs the nearest grid vertex
+    * Return a Promise that resolves to the Token once the animation for the movement has been completed
+-   * @param {number} x            The x-coordinate of the token center
+-   * @param {number} y            The y-coordinate of the token center
+-   * @param {boolean} [animate]   Animate the movement path, default is true
+-   * @return {Promise}            The Token after animation has completed
++   * @param {number} x                    The x-coordinate of the token center
++   * @param {number} y                    The y-coordinate of the token center
++   * @param {Object} [options]            The options to set the position.
++   * @param {boolean} [options.animate]   Animate the movement path, default is true
++   * @return {Promise}                    The Token after animation has completed
+    */
+   async setPosition(x, y, {animate=true}={}) {
+ 
+@@ -40860,10 +40927,11 @@ class Token extends PlaceableObject {
+ 
+   /**
+    * Set this Token as an active target for the current game User
+-   * @param {boolean} targeted        Is the Token now targeted?
+-   * @param {User|null} user          Assign the token as a target for a specific User
+-   * @param {boolean} releaseOthers   Release other active targets for the same player?
+-   * @param {boolean} groupSelection  Is this target being set as part of a group selection workflow?
++	 * @param {boolean} targeted                  Is the Token now targeted?
++	 * @param {Object} [options]                  The options for setting the Token's target.
++	 * @param {User|null} [options.user]          Assign the token as a target for a specific User
++	 * @param {boolean} [options.releaseOthers]   Release other active targets for the same player?
++	 * @param {boolean} [options.groupSelection]  Is this target being set as part of a group selection workflow?
+    */
+   setTarget(targeted=true, {user=null, releaseOthers=true, groupSelection=false}={}) {
+     user = user || game.user;
+@@ -40979,7 +41047,7 @@ class Token extends PlaceableObject {
+    * A generic transformation to turn a certain number of grid units into a radius in canvas pixels.
+    * This function adds additional padding to the light radius equal to half the token width.
+    * This causes light to be measured from the outer token edge, rather than from the center-point.
+-   * @param units {Number}  The radius in grid units
++   * @param units {number}  The radius in grid units
+    * @return {number}       The radius in canvas units
+    */
+   getLightRadius(units) {
+@@ -41443,7 +41511,7 @@ class Wall extends PlaceableObject {
+ 
+   /**
+    * A convenience reference to the coordinates Array for the Wall endpoints, [x0,y0,x1,y1].
+-   * @type {Array.<number>}
++   * @type {number[]}
+    */
+   get coords() {
+     return this.data.c;
+@@ -41461,7 +41529,7 @@ class Wall extends PlaceableObject {
+ 
+   /**
+    * Return the coordinates [x,y] at the midpoint of the wall segment
+-   * @return {Array.<number>}
++   * @return {PointArray}
+    */
+   get midpoint() {
+     return [(this.coords[0] + this.coords[2]) / 2, (this.coords[1] + this.coords[3]) / 2]
+@@ -45684,7 +45752,7 @@ class Ruler extends PIXI.Container {
+     /**
+      * This Array tracks individual waypoints along the ruler's measured path.
+      * The first waypoint is always the origin of the route.
+-     * @type {Array.<PIXI.Point>}
++     * @type {PIXI.Point[]}
+      */
+     this.waypoints = [];
+ 
+@@ -46633,9 +46701,9 @@ class BaseGrid extends PIXI.Container {
+ 
+   /**
+    * Measure the distance traversed over an array of measured segments
+-   * @param {object[]} segments     An Array of measured movement segments
+-   * @param {Options} options       Additional options which modify the measurement
+-   * @return {number[]}             An Array of distance measurements for each segment
++   * @param {Object[]} segments    An Array of measured movement segments
++   * @param {Options} [options]    Additional options which modify the measurement
++   * @return {number[]}            An Array of distance measurements for each segment
+    */
+   measureDistances(segments, options={}) {
+     const d = canvas.dimensions;
+@@ -46679,7 +46747,7 @@ class HexagonalGrid extends BaseGrid {
+ 
+   /**
+    * A matrix of x and y offsets which is multiplied by the width/height vector to get pointy-top polygon coordinates
+-   * @type {Array<number[]>}
++   * @type {number[][]}
+    */
+   static get pointyHexPoints() {
+     return [[0, 0.25], [0.5, 0], [1, 0.25], [1, 0.75], [0.5, 1], [0, 0.75], [0, 0.25]];
+@@ -46689,7 +46757,7 @@ class HexagonalGrid extends BaseGrid {
+ 
+   /**
+    * A matrix of x and y offsets which is multiplied by the width/height vector to get flat-top polygon coordinates
+-   * @type {Array<number[]>}
++   * @type {number[][]}
+    */
+   static get flatHexPoints() {
+     return [[0, 0.5], [0.25, 0], [0.75, 0], [1, 0.5], [0.75, 1], [0.25, 1], [0, 0.5]];
+@@ -47218,7 +47286,7 @@ class GridLayer extends CanvasLayer {
+   /**
+    * Measure the distance traveled over an array of distance segments.
+    * @param {object[]} segments     An array of measured segments
+-   * @param {Options} options       Additional options which modify the measurement
++   * @param {Options} [options]     Additional options which modify the measurement
+    */
+   measureDistances(segments, options={}) {
+     return this.grid.measureDistances(segments, options);
+-- 
+2.25.1
+
