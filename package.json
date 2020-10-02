@@ -5,13 +5,14 @@
   "main": "foundry.d.ts",
   "scripts": {
     "generate:066": "tsc -p 066_declaration.tsconfig.json",
-    "generate:073": "tsc -p 073_declaration.tsconfig.json"
+    "generate:073": "tsc -p 073_declaration.tsconfig.json",
+    "jsdoc:066": "jsdoc src/foundry_066/foundry.js",
+    "jsdoc:073": "jsdoc src/foundry_073/foundry.js"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "jsdoc": "^3.6.6",
-    "jsdoc-to-markdown": "^6.0.1",
     "typescript": "^4.0.3"
   }
 }
