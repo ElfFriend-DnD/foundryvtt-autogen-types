@@ -1458,11 +1458,15 @@ declare class PointSource {
     _pulseAngle: any;
     /**
      * A color-shifting animation which evolves the tint color of the displayed light source.
-     * @param {number} dt         Delta time
-     * @param {number} speed      The animation speed, from 1 to 10
-     * @param {number} intensity  The animation intensity, from 1 to 10
+       * @param {number} dt                     Delta time
+       * @param {Object} [options]              The options
+       * @param {number} [options.speed]        The animation speed, from 1 to 10
+       * @param {number} [options.intensity]    The animation intensity, from 1 to 10
      */
-    animateChroma(dt: number, { speed, intensity }?: number): void;
+    animateChroma(dt: number, { speed, intensity }?: {
+        speed: number;
+        intensity: number;
+    }): void;
     _priorColor: any;
     _targetColor: number[];
     /**
