@@ -49,6 +49,16 @@ If you encounter any other similar errors to the one above, the solution is the 
 
 Assuming you've run `npm install`, run `npm jsdoc:<version>`. This will output a bunch of HTML files into the `out` directory which can be opened in any browser.
 
+## Patching foundry.js
+
+@lukeabby spent some hours writing a patch file to fix some of the problems in 0.7.3's JSDoc in an effort to get this running smoother. You can find this in `src/foundry_073/changes.patch` and once you've copied your own `foundry.js` into that directory, you can apply this patch like so:
+
+```
+git apply --reject --ignore-whitespace --ignore-space-change src/foundry_073/changes.patch
+```
+
+- `--reject` will make git attempt to apply the patch piecemeal and create a `foundry.js.rej` file at the end of the process containing any patch items it could not apply.
+
 
 ## Conclusions
 
